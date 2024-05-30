@@ -5,10 +5,25 @@ include("AccuracyModule.jl")
 
 using .DataModule, .RecurrentNetworkModule, .DenseNetworkModule, .AccuracyModule
 
+function forward(model::Tuple, input::Matrix{Float32})
+    for layer in model
+        input = layer(input)
+    end
+    return input
+end
+
+function train(model::Tuple, data::Matrix{Float32})
+    forward(model, data[1:196,:])
+    forward(model, data[197:392,:])
+    forward(model, data[393:588,:])
+    return forward(model, data[589:end,:])
+end
+
 function main()
     # (in) => (out)
     dense = DenseNetworkModule.Dense(64 => 10, identity)
     rnn = RecurrentNetworkModule.RNN((196) => 64, tanh)
+    model = (rnn, dense)
 
     println("Loading training data...")
     train_x, train_y = DataModule.preprocess(:train; one_hot = true)
@@ -17,45 +32,17 @@ function main()
     test_x, test_y = DataModule.preprocess(:test; one_hot = true)
 
     println("Training")
-#     println("Calculating #196")
-    rnn.state = rnn.cell(rnn.state, train_x[1:196,:])
-    dense(rnn.state)
-#     println("Calculating #392")
-    rnn.state = rnn.cell(rnn.state, train_x[197:392,:])
-    dense(rnn.state)
-#     println("Calculating #588")
-    rnn.state = rnn.cell(rnn.state, train_x[393:588,:])
-    dense(rnn.state)
-#     println("Calculating #end")
-    rnn.state = rnn.cell(rnn.state, train_x[589:end,:])
-    train_result = dense(rnn.state)
-
+    @time begin
+        train_result = train(model, train_x)
+    end
     loss, acc = AccuracyModule.loss_and_accuracy(train_result, train_y)
-
-    println("Train results")
-
     @show loss
     @show acc
 
-    rnn.state = RecurrentNetworkModule.RNN((196) => 64, tanh).state
-
-#     println("Calculating #196")
-    rnn.state = rnn.cell(rnn.state, test_x[1:196,:])
-    dense(rnn.state)
-#     println("Calculating #392")
-    rnn.state = rnn.cell(rnn.state, test_x[197:392,:])
-    dense(rnn.state)
-#     println("Calculating #588")
-    rnn.state = rnn.cell(rnn.state, test_x[393:588,:])
-    dense(rnn.state)
-#     println("Calculating #end")
-    rnn.state = rnn.cell(rnn.state, test_x[589:end,:])
-    test_result = dense(rnn.state)
-
+    println("Testing")
+    rnn.state = rnn.state0
+    test_result = train(model, test_x)
     loss, acc = AccuracyModule.loss_and_accuracy(test_result, test_y)
-
-    println("Test results")
-
     @show loss
     @show acc
 

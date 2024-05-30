@@ -12,27 +12,26 @@ module RecurrentNetworkModule
       return y
     end
 
-    struct RNNCell{F,I,H,V,S}
+    mutable struct RNNCell{F,I,H,V,S,S0}
       σ::F
       Wi::I
       Wh::H
       b::V
-      state0::S
+      state::S
+      state0::S0
     end
 
-    function (m::RNNCell{F,I,H,V,<:AbstractMatrix{T}})(h, x::Matrix{Float32}) where {F,I,H,V,T}
+    function (m::RNNCell)(x::Matrix{Float32})
       Wi, Wh, b = m.Wi, m.Wh, m.b
       σ = UtilsModule.fast_act(m.σ, x)
-      xT = UtilsModule._match_eltype(m, T, x)
-      h = σ.(Wi*xT .+ Wh*h .+ b)
-      return h
+      m.state = σ.(Wi*x .+ Wh*m.state .+ b)
+      return m.state
     end
 
     RNNCell((in, out)::Pair, σ = tanh; init = UtilsModule.glorot_uniform, initb = UtilsModule.zeros32, init_state = UtilsModule.zeros32) =
-      RNNCell(σ, init(out, in), init(out, out), initb(out), init_state(out,1))
+      RNNCell(σ, init(out, in), init(out, out), initb(out), init_state(out,1), init_state(out, 1))
 
-    RNN(a...; ka...) = Recur(RNNCell(a...; ka...))
-    Recur(m::RNNCell) = Recur(m, m.state0)
+    RNN(a...; ka...) = RNNCell(a...; ka...)
 
     function show(l::RNNCell)
       print("RNNCell(", size(l.Wi, 2), " => ", size(l.Wi, 1))
