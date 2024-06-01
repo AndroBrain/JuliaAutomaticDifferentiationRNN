@@ -5,6 +5,7 @@ module UtilsModule
     nfan(dims::Tuple) = nfan(dims...)
 
     zeros32(size...) = zeros(Float32, size...)
+    ones32(size...) = ones(Float32, size...)
 
     function glorot_uniform(dims::Integer...; gain::Real=1)
       scale = Float32(gain) * sqrt(24.0f0 / sum(nfan(dims...)))
@@ -18,6 +19,16 @@ module UtilsModule
     function identity(x)
         return x
     end
+
+    function identity_derivative(x)
+        return 1
+    end
+
+    function tanh_derivative(x)
+        mult = tanh(x) * tanh(x)
+        return ones32(size(x)) - mult
+    end
+
 
     function create_bias(weights::AbstractArray, bias::Bool, dims::Integer...)
       bias ? fill!(similar(weights, dims...), 0) : false
