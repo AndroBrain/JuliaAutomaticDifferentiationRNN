@@ -13,18 +13,10 @@ function forward(model::Tuple, input::Matrix{Float32})
 end
 
 function train(model::Tuple, data::Matrix{Float32}, data_y)
-#     data1 = data[1:196, :]
-#     data2 = data[197:392, :]
-#     data3 = data[393:588, :]
-#     data4 = data[589:end, :]
-#     a1 = forward(model, data1)
-#     a2 = forward(model, data2)
-#     a3 = forward(model, data3)
-#     a4 = forward(model, data4)
     result = forward(model, data)
-    C = (2 * (result - data_y) / size(data_y)[2])
 
-    loss, acc, gradient_loss = AccuracyModule.loss_and_accuracy(result, data_y)
+    loss, acc, C = AccuracyModule.loss_and_accuracy(result, data_y)
+    println("Untrained")
     @show loss
     @show acc
 
@@ -36,15 +28,10 @@ function train(model::Tuple, data::Matrix{Float32}, data_y)
     end
 
     result = forward(model, data)
-
-    loss, acc, gradient_loss = AccuracyModule.loss_and_accuracy(result, data_y)
+    loss, acc, _ = AccuracyModule.loss_and_accuracy(result, data_y)
+    println("Trained")
     @show loss
     @show acc
-#
-#     a1 = forward(model, data1)
-#     a2 = forward(model, data2)
-#     a3 = forward(model, data3)
-#     a4 = forward(model, data4)
 end
 
 function main()

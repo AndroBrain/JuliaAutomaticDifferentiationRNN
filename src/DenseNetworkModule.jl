@@ -37,21 +37,12 @@ module DenseNetworkModule
     end
 
     function back(a::Dense, C::Matrix{Float32})
-        prev = a.prev_input
-#         prev = UtilsModule.ones32(size(a.weight)) * a.prev_input
-        println(string("Prev_input: ", size(prev))) # 64, 60000
-        deriv_a = 1 # identity_derivative is always 1
-        println(string("deriv_a: ", size(deriv_a))) # 1
-        println(string("C: ", size(C))) # 10, 60000
-        weight_gradient = prev * deriv_a * transpose(C)
-        println(string("Weight gradient: ", size(weight_gradient)))
-        println(string("a weight: ", size(a.weight)))
-        a.weight .-= transpose(weight_gradient)
+        deriv_a = 1 .* C # identity_derivative is always 1
+        gradient_weights = deriv_a * a.prev_input'
+        gradient_biases = sum(deriv_a, dims=2)
 
-#         bias_gradient = deriv_a * mean(C)
-#         println(string("Bias gradient", size(bias_gradient)))
-#         println(string("b weight: ", size(a.bias)))
-#         a.bias .-= bias_gradient
+        a.weight .-= gradient_weights
+        a.bias .-= gradient_biases
     end
 
     function show(l::Dense)
