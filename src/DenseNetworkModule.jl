@@ -4,28 +4,26 @@ module DenseNetworkModule
     using .UtilsModule
     using Statistics: mean
 
-    mutable struct Dense{F, FA, M<:AbstractMatrix, B, P}
+    mutable struct Dense{M<:AbstractMatrix, B, P}
       weight::M
       bias::B
-      σ::F
-      σ_d::FA
+      activation::Function
       prev_input::P
-      function Dense(W::M, bias = true, σ::F = identity,σ_d::FA = identity_derivative, prev_input::P = 1) where {M<:AbstractMatrix, F, FA, P}
+      function Dense(W::M, bias = true, activation::F = identity, prev_input::P = 1) where {M<:AbstractMatrix, F, P}
         b = UtilsModule.create_bias(W, bias, size(W,1))
-        new{F, FA,M,typeof(b), P}(W, b, σ, σ_d, prev_input)
+        new{M,typeof(b), P}(W, b, activation, prev_input)
       end
     end
 
-    function Dense((in, out)::Pair{<:Integer, <:Integer}, σ = UtilsModule.identity;
-      σ_d = UtilsModule.identity_derivative, init = UtilsModule.glorot_uniform, bias = true)
-      Dense(init(out, in), bias, σ, σ_d, UtilsModule.zeros32(in, in))
+    function Dense((in, out)::Pair{<:Integer, <:Integer}, activation = UtilsModule.identity;
+      init = UtilsModule.glorot_uniform, bias = true)
+      Dense(init(out, in), bias, activation, UtilsModule.zeros32(in, in))
     end
 
     function (a::Dense)(x::AbstractVecOrMat)
       a.prev_input = x
-      σ = UtilsModule.fast_act(a.σ, x)
     #   xT = _match_eltype(a, x)  # TODO try to make it work or remove
-      result = σ.(a.weight * x .+ a.bias)
+      result = a.activation.(a.weight * x .+ a.bias)
       return result
     end
 
