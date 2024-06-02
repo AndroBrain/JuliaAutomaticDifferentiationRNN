@@ -36,11 +36,4 @@ module DenseNetworkModule
         a.bias .-= gradient_biases
         return prev_weight' * C
     end
-
-    function show(l::Dense)
-      print("Dense(", size(l.weight, 2), " => ", size(l.weight, 1))
-      l.σ == identity || print(", ", l.σ)
-      l.bias == false && print("; bias=false")
-      print(")\n")
-    end
 end
