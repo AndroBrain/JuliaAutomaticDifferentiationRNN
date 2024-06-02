@@ -64,11 +64,26 @@ function main()
                 push!(batch_acc, acc)
             end
         end
+        for layer in model
+            if isa(layer.layer, RecurrentNetworkModule.RNNCell)
+                layer.layer.state = layer.layer.state0
+            end
+        end
         result = forward(model, train_x)
         _, train_acc, _ = AccuracyModule.loss_and_accuracy(result, train_y)
+        for layer in model
+            if isa(layer.layer, RecurrentNetworkModule.RNNCell)
+                layer.layer.state = layer.layer.state0
+            end
+        end
         result = forward(model, test_x)
         _, test_acc, _ = AccuracyModule.loss_and_accuracy(result, test_y)
         @info epoch train_acc test_acc
+        for layer in model
+            if isa(layer.layer, RecurrentNetworkModule.RNNCell)
+                layer.layer.state = layer.layer.state0
+            end
+        end
     end
 
     plot(batch_acc, xlabel="Batch num", ylabel="acc", title="Accuracy over batches")

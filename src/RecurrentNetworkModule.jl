@@ -20,8 +20,7 @@ module RecurrentNetworkModule
     # Forward propagation
     function (m::RNNCell)(x::Matrix{Float32})
       m.prev_input = x
-#       m.state = m.activation.(m.input_weights*x .+ m.hidden_weights * m.state .+ b)
-      m.state = m.activation.(m.input_weights*x .+ m.bias)
+      m.state = m.activation.(m.input_weights * x .+ m.hidden_weights * m.state .+ m.bias)
       return m.state
     end
 
@@ -32,12 +31,11 @@ module RecurrentNetworkModule
         # TODO optimize by calculating der_z .*
         fast_calc = der_z .* C
         gradient_weights = fast_calc * a.prev_input'
+        gradient_hidden_weights = fast_calc * a.state'
         gradient_bias = sum(fast_calc, dims=2)
-#         println(string("gradient_weights: ", size(gradient_weights)))
-#         @show sum(gradient_weights)
 
-        # TODO update hidden state weights
         a.input_weights .-= gradient_weights
+        a.hidden_weights .-= gradient_hidden_weights
         a.bias .-= gradient_bias
     end
 end
