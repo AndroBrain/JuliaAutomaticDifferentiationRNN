@@ -26,23 +26,17 @@ module DenseNetworkModule
       σ = UtilsModule.fast_act(a.σ, x)
     #   xT = _match_eltype(a, x)  # TODO try to make it work or remove
       result = σ.(a.weight * x .+ a.bias)
-      println(size(result))
       return result
     end
 
-    function (a::Dense)(loss, x::AbstractVecOrMat)
-      derivative_activation = a.σ_d(x)
-      a.weight = a.weight * derivative_activation
-      return a.weight * derivative_activation
-    end
-
     function back(a::Dense, C::Matrix{Float32})
-        deriv_a = 1 .* C # identity_derivative is always 1
-        gradient_weights = deriv_a * a.prev_input'
-        gradient_biases = sum(deriv_a, dims=2)
+        prev_weight = a.weight
 
+        gradient_weights = C * a.prev_input'
+        gradient_biases = sum(C, dims=2)
         a.weight .-= gradient_weights
         a.bias .-= gradient_biases
+        return prev_weight' * C
     end
 
     function show(l::Dense)

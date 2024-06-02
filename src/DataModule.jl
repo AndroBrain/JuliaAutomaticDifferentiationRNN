@@ -9,7 +9,7 @@ module DataModule
     end
 
     function load(split::Symbol)
-        data = MLDatasets.MNIST(split=split)
+        data = MLDatasets.MNIST(split = split)
         return data.features, data.targets
     end
 
@@ -19,5 +19,14 @@ module DataModule
             one_hot[i, findall(x -> x == class, targets)] .= 1
         end
         return one_hot
+    end
+
+    function batch(data, n)
+        arr = Array{Matrix{Float32}}(undef, 0)
+        for i in 1:size(data,2) / n
+            i = floor(Int, i)
+            push!(arr, data[:, (i * n - n + 1):i*n])
+        end
+        return arr
     end
 end
