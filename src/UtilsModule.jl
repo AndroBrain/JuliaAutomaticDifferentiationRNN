@@ -1,6 +1,7 @@
 module UtilsModule
     using Random
     Random.seed!(123)
+
     nfan() = 1, 1 # fan_in, fan_out
     nfan(n) = 1, n # A vector is treated as a n×1 matrix
     nfan(n_out, n_in) = n_in, n_out # In case of Dense kernels: arranged as matrices

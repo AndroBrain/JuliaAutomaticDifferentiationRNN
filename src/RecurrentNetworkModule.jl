@@ -35,6 +35,7 @@ module RecurrentNetworkModule
 #         println(string("gradient_weights: ", size(gradient_weights)))
 #         @show sum(gradient_weights)
 
+        # TODO update bias and state
         a.Wi .-= gradient_weights
     end
 

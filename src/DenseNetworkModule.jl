@@ -30,8 +30,8 @@ module DenseNetworkModule
     end
 
     function back(a::Dense, C::Matrix{Float32})
+        # TODO add activation derivative function
         prev_weight = a.weight
-
         gradient_weights = C * a.prev_input'
         gradient_biases = sum(C, dims=2)
         a.weight .-= gradient_weights
