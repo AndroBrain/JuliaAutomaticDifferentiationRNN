@@ -12,17 +12,7 @@ struct LayerWrapper
     optimizer::GradientOptimizer
 end
 
-function forward(model, input::Matrix{Float32})
-    for layer in model
-        input = layer.layer(input)
-    end
-    return input
-end
-
-function train(model, data::Matrix{Float32}, data_y)
-    result = forward(model, data)
-    loss, acc, C = AccuracyModule.loss_and_accuracy(result, data_y)
-
+function backward(model, C)
     for layer in reverse(model)
         C = layer.optimizer(C)
         if isa(layer.layer, DenseNetworkModule.Dense)
@@ -32,17 +22,22 @@ function train(model, data::Matrix{Float32}, data_y)
             C = RecurrentNetworkModule.back(layer.layer, C)
         end
     end
-    return result
+end
+
+function forward(model, input::Matrix{Float32})
+    for layer in model
+        input = layer.layer(input)
+    end
+    return input
 end
 
 function main()
-    # (in) => (out)
-    rnn = LayerWrapper(RecurrentNetworkModule.RNN(784 => 64, tanh), Descent(1f-10))
-    dense1 = LayerWrapper(DenseNetworkModule.Dense(784 => 64, identity), Descent(0.00000000002f0))
-    dense2 = LayerWrapper(DenseNetworkModule.Dense(64 => 10, identity), Descent(1f0))
-    model = [rnn, dense2]
     batch_size = 100
     epochs = 5
+    # (in) => (out)
+    rnn = LayerWrapper(RecurrentNetworkModule.RNN(196 => 64, tanh), Descent(10f-12))
+    dense = LayerWrapper(DenseNetworkModule.Dense(64 => 10, identity), Descent(1f0))
+    model = [rnn, dense]
 
     println("Loading training data...")
     train_x, train_y = DataModule.preprocess(:train; one_hot = true)
@@ -55,13 +50,28 @@ function main()
 
     println("Training...")
     batch_acc = Float64[]
+    batch_loss = Float64[]
     for epoch in 1:epochs
         batches = size(train_x_batched, 1)
         @time begin
             for batch in 1:batches
-                result = train(model, train_x_batched[batch], train_y_batched[batch])
-                loss, acc, _ = AccuracyModule.loss_and_accuracy(result, train_y_batched[batch])
+                # TODO go back only once like in the notebook example:
+                # https://gist.github.com/bchaber/48a309fbdad8753d2a60ce2f30da5e44
+
+                x = train_x_batched[batch][1:196, :]
+                result1 = forward(model, x)
+                x = train_x_batched[batch][197:392, :]
+                result2 = forward(model, x)
+                x = train_x_batched[batch][393:588, :]
+                result3 = forward(model, x)
+                x = train_x_batched[batch][589:end, :]
+                y = train_y_batched[batch]
+                result4 = forward(model, x)
+
+                loss, acc, C = AccuracyModule.loss_and_accuracy(result4, y)
+                backward(model, C)
                 push!(batch_acc, acc)
+                push!(batch_loss, loss)
             end
         end
         for layer in model
@@ -69,14 +79,20 @@ function main()
                 layer.layer.state = layer.layer.state0
             end
         end
-        result = forward(model, train_x)
+        forward(model, train_x[1:196,:])
+        forward(model, train_x[197:392,:])
+        forward(model, train_x[393:588,:])
+        result = forward(model, train_x[589:end,:])
         _, train_acc, _ = AccuracyModule.loss_and_accuracy(result, train_y)
         for layer in model
             if isa(layer.layer, RecurrentNetworkModule.RNNCell)
                 layer.layer.state = layer.layer.state0
             end
         end
-        result = forward(model, test_x)
+        forward(model, test_x[1:196,:])
+        forward(model, test_x[197:392,:])
+        forward(model, test_x[393:588,:])
+        result = forward(model, test_x[589:end,:])
         _, test_acc, _ = AccuracyModule.loss_and_accuracy(result, test_y)
         @info epoch train_acc test_acc
         for layer in model
@@ -86,5 +102,6 @@ function main()
         end
     end
 
-    plot(batch_acc, xlabel="Batch num", ylabel="acc", title="Accuracy over batches")
+    plot(batch_loss, xlabel="Batch num", ylabel="loss", title="Loss over batches")
+#     plot(batch_acc, xlabel="Batch num", ylabel="acc", title="Accuracy over batches")
 end
