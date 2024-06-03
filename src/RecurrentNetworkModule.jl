@@ -27,7 +27,6 @@ module RecurrentNetworkModule
     function back(a::RNNCell, C::AbstractVecOrMat)
         z_l = a.input_weights * a.prev_input
         der_z = 1 .- tanh.(z_l).^2
-        # TODO optimize by calculating der_z .*
         fast_calc = der_z .* C
         gradient_weights = fast_calc * a.prev_input'
         gradient_hidden_weights = fast_calc * a.state'

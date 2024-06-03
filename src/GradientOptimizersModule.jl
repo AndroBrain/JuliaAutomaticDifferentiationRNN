@@ -1,3 +1,4 @@
+# based on: https://towardsdatascience.com/a-visual-explanation-of-gradient-descent-methods-momentum-adagrad-rmsprop-adam-f898b102325c
 module GradientOptimizersModule
     export GradientOptimizer, Adagrad, Descent, RMSProp, Adam
 
