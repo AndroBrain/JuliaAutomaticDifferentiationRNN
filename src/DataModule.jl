@@ -5,6 +5,10 @@ module DataModule
         features, targets = load(split)
         x1dim = reshape(features, 28 * 28, :)
         yhot = one_hot ? hot_encode(targets, 0:9) : targets
+
+        perm = randperm(size(x1dim, 2))
+        x1dim = x1dim[:, perm]
+        yhot = yhot[:, perm]
         return x1dim, yhot
     end
 
