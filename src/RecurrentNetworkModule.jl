@@ -35,8 +35,10 @@ module RecurrentNetworkModule
         gradient_hidden_weights = fast_calc * a.state'
         gradient_bias = sum(fast_calc, dims=2)
 
+        prev_weight = a.input_weights
         a.input_weights .-= gradient_weights
         a.hidden_weights .-= gradient_hidden_weights
         a.bias .-= gradient_bias
+        return prev_weight' * fast_calc
     end
 end

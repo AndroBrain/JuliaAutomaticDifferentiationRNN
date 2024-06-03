@@ -1,6 +1,6 @@
 module UtilsModule
     using Random
-    Random.seed!(123)
+    Random.seed!(100)
 
     nfan() = 1, 1 # fan_in, fan_out
     nfan(n) = 1, n # A vector is treated as a n×1 matrix
