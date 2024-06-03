@@ -12,8 +12,11 @@ module RecurrentNetworkModule
       prev_input::P
     end
 
-    RNNCell((in, out)::Pair, activation = tanh; init = UtilsModule.glorot_uniform, initb = UtilsModule.zeros32, init_state = UtilsModule.zeros32) =
-      RNNCell(activation, init(out, in), init(out, out), initb(out), init_state(out,1), init_state(out, 1), UtilsModule.zeros32(in, in))
+    function RNNCell((in, out)::Pair, activation = tanh; init = UtilsModule.glorot_uniform, init_state = UtilsModule.zeros32)
+      input_weights = init(out, in)
+      bias = UtilsModule.create_bias(input_weights, true, size(input_weights, 1))
+      RNNCell(activation, input_weights, init(out, out), bias, init_state(out,1), init_state(out, 1), UtilsModule.zeros32(in, in))
+    end
 
     RNN(a...; ka...) = RNNCell(a...; ka...)
 

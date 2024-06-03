@@ -12,7 +12,7 @@ module AccuracyModule
         probabilities = softmax(predictions)
         loss = -mean(sum(targets .* log.(probabilities), dims=1))
         gradient = probabilities - targets
-        return loss, Float32.(gradient)
+        return loss, Float64.(gradient)
     end
 
     function one_cold(encoded)

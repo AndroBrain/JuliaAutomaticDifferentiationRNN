@@ -32,7 +32,6 @@ module UtilsModule
         return ones32(size(x)) - mult
     end
 
-
     function create_bias(weights::AbstractArray, bias::Bool, dims::Integer...)
       bias ? fill!(similar(weights, dims...), 0) : false
     end

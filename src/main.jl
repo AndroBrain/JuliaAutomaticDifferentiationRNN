@@ -5,7 +5,7 @@ include("AccuracyModule.jl")
 include("GradientOptimizersModule.jl")
 
 using .DataModule, .RecurrentNetworkModule, .DenseNetworkModule, .AccuracyModule, .GradientOptimizersModule
-using Plots
+using Plots, Random
 
 struct LayerWrapper
     layer
@@ -38,10 +38,12 @@ function train(model, epochs, train_x_batched, train_y_batched, train_x, train_y
     for epoch in 1:epochs
         batches = size(train_x_batched, 1)
 #         @time begin
-            for batch in 1:batches
-                # TODO go back only once like in the notebook example:
-                # https://gist.github.com/bchaber/48a309fbdad8753d2a60ce2f30da5e44
-
+            for batch in randperm(batches)
+                for layer in model
+                    if isa(layer.layer, RecurrentNetworkModule.RNNCell)
+                        layer.layer.state = layer.layer.state0
+                    end
+                end
                 x = train_x_batched[batch][1:196, :]
                 forward(model, x)
                 x = train_x_batched[batch][197:392, :]
@@ -49,9 +51,9 @@ function train(model, epochs, train_x_batched, train_y_batched, train_x, train_y
                 x = train_x_batched[batch][393:588, :]
                 forward(model, x)
                 x = train_x_batched[batch][589:end, :]
-                y = train_y_batched[batch]
                 result4 = forward(model, x)
 
+                y = train_y_batched[batch]
                 loss, acc, C = AccuracyModule.loss_and_accuracy(result4, y)
                 C = C ./ 100
                 backward(model, C)
@@ -113,7 +115,7 @@ function main()
 #             println(string("Learning: ", small_rate, " : ", learning_rate))
             epochs = 5
             # (in) => (out)
-            rnn = LayerWrapper(RecurrentNetworkModule.RNN(196 => 64, tanh), Adam(zeros(Float32, 64, batch_size), zeros(Float32, 64, batch_size), 0.999, 0.9999, 10e-7))
+            rnn = LayerWrapper(RecurrentNetworkModule.RNN(196 => 64, tanh), Adam(zeros(Float32, 64, batch_size), zeros(Float32, 64, batch_size), 0.9, 0.999, 10e-7))
             dense = LayerWrapper(DenseNetworkModule.Dense(64 => 10, identity), Descent(1.0))
 
             model = [rnn, dense]
