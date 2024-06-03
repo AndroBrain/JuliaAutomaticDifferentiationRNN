@@ -35,8 +35,8 @@ function main()
     batch_size = 100
     epochs = 5
     # (in) => (out)
-    rnn = LayerWrapper(RecurrentNetworkModule.RNN(196 => 64, tanh), Descent(10f-12))
-    dense = LayerWrapper(DenseNetworkModule.Dense(64 => 10, identity), Descent(1f0))
+    rnn = LayerWrapper(RecurrentNetworkModule.RNN(196 => 64, tanh), Adagrad(zeros(Float32, 64, batch_size), 10e-8))
+    dense = LayerWrapper(DenseNetworkModule.Dense(64 => 10, identity), Descent(10e-1))
     model = [rnn, dense]
 
     println("Loading training data...")
@@ -69,6 +69,7 @@ function main()
                 result4 = forward(model, x)
 
                 loss, acc, C = AccuracyModule.loss_and_accuracy(result4, y)
+                C = C ./ batches
                 backward(model, C)
                 push!(batch_acc, acc)
                 push!(batch_loss, loss)
@@ -102,6 +103,6 @@ function main()
         end
     end
 
-    plot(batch_loss, xlabel="Batch num", ylabel="loss", title="Loss over batches")
-#     plot(batch_acc, xlabel="Batch num", ylabel="acc", title="Accuracy over batches")
+#     plot(batch_loss, xlabel="Batch num", ylabel="loss", title="Loss over batches")
+    plot(batch_acc, xlabel="Batch num", ylabel="acc", title="Accuracy over batches")
 end

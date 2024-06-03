@@ -27,6 +27,7 @@ module DataModule
             i = floor(Int, i)
             push!(arr, data[:, (i * n - n + 1):i*n])
         end
+        shuffle(arr)
         return arr
     end
 end

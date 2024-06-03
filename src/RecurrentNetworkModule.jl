@@ -18,16 +18,15 @@ module RecurrentNetworkModule
     RNN(a...; ka...) = RNNCell(a...; ka...)
 
     # Forward propagation
-    function (m::RNNCell)(x::Matrix{Float32})
+    function (m::RNNCell)(x::AbstractVecOrMat)
       m.prev_input = x
       m.state = m.activation.(m.input_weights * x .+ m.hidden_weights * m.state .+ m.bias)
       return m.state
     end
 
-    function back(a::RNNCell, C::Matrix{Float32})
+    function back(a::RNNCell, C::AbstractVecOrMat)
         z_l = a.input_weights * a.prev_input
         der_z = 1 .- tanh.(z_l).^2
-#         @info "data: " size(der_z) size(a.state) size(a.prev_input) size(C) size(a.Wi)
         # TODO optimize by calculating der_z .*
         fast_calc = der_z .* C
         gradient_weights = fast_calc * a.prev_input'

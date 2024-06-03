@@ -27,7 +27,7 @@ module DenseNetworkModule
       return result
     end
 
-    function back(a::Dense, C::Matrix{Float32})
+    function back(a::Dense, C::AbstractVecOrMat)
         # TODO add activation derivative function
         prev_weight = a.weight
         gradient_weights = C * a.prev_input'
