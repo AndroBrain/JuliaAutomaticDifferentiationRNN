@@ -26,4 +26,13 @@ module AccuracyModule
         acc = round(100 * mean(pred_classes .== true_classes); digits=2)
         return loss, acc, grad
     end
+
+    function loss_acc(prediction, target)
+        pred_classes = one_cold(prediction)
+        true_classes = one_cold(prediction)
+        acc = round(100 * mean(pred_classes .== true_classes); digits=2)
+        probability = softmax(prediction)
+        loss = -mean(sum(target .* log.(probability), dims=1))
+        return loss, acc
+    end
 end
