@@ -223,9 +223,16 @@ forward(::BroadcastedOperator{typeof(dense)}, x, w, b) = w * x .+ b
 backward(::BroadcastedOperator{typeof(dense)}, x, w, b, g) = tuple(w' * g, g * x', sum(g, dims=2))
 
 rnn(x::GraphNode, w::GraphNode, b::GraphNode, hw::GraphNode, state::GraphNode) = BroadcastedOperator(rnn, x, w, b, hw, state)
-forward(::BroadcastedOperator{typeof(rnn)}, x, w, b, hw, state) = tanh.(w * x .+ hw * state .+ b)
+forward(o::BroadcastedOperator{typeof(rnn)}, x, w, b, hw, state) = let
+#     o.inputs[5].output = tanh.(w * x .+ (hw * state).^2) ~67
+#     o.inputs[5].output = tanh.(w * x .+ hw * state) ~ 67
+#     o.inputs[5].output = (1 .- tanh.(w * x .+ hw * state).^2) ~60
+#     o.inputs[5].output = (1 .- tanh.(w * x .+ hw * state)) ~ 36
+    o.inputs[5].output = tanh.(w * x .+ hw * state)
+    tanh.(w * x .+ hw * state .+ b)
+end
 backward(::BroadcastedOperator{typeof(rnn)}, x, w, b, hw, state, g) = let
     g = (1 .- tanh.(w * x).^2) .* g
 #     println(string("Backward ", sum(w' * g), " ", sum(g * x'), " ", sum(g, dims=2), " ", sum(g * state'), " ", sum(x)))
-    tuple(w' * g, g * x', sum(g, dims=2), g * state', g * x') # returning x crashes 2nd epoch
+    tuple(w' * g, g * x', sum(g, dims=2), g * state', (hw * state .+ w * x) ./ 2) # returning x crashes 2nd epoch
 end
