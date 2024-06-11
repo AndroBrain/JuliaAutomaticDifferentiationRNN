@@ -81,7 +81,6 @@ function main()
 
             x.output = train_x_batched[batch][197:392,:]
             forward!(graph)
-            reset_state!(graph)
 
             x.output = train_x_batched[batch][393:588,:]
             forward!(graph)

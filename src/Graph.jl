@@ -228,7 +228,10 @@ forward(o::BroadcastedOperator{typeof(rnn)}, x, w, b, hw, state) = let
 #     o.inputs[5].output = tanh.(w * x .+ hw * state) ~ 67
 #     o.inputs[5].output = (1 .- tanh.(w * x .+ hw * state).^2) ~60
 #     o.inputs[5].output = (1 .- tanh.(w * x .+ hw * state)) ~ 36
-    o.inputs[5].output = tanh.(w * x .+ hw * state)
+    o.inputs[5].output = o.inputs[5].output .+ tanh.(w * x .+ hw * state)
+#     o.inputs[5].output = w * sigmoid.(x) ~35
+
+    # TODO consider trying to make an array of hidden functions, even consider array of weights
     tanh.(w * x .+ hw * state .+ b)
 end
 backward(::BroadcastedOperator{typeof(rnn)}, x, w, b, hw, state, g) = let
