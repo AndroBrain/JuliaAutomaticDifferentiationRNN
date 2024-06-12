@@ -1,6 +1,7 @@
 include("AccuracyModule.jl")
 using .AccuracyModule
 using LinearAlgebra
+using Flux
 import Statistics: mean
 # Types
 abstract type GraphNode end
@@ -102,22 +103,37 @@ function backward!(node::Operator)
 end
 
 cross_entropy_loss(y_hat::GraphNode, y::GraphNode) = BroadcastedOperator(cross_entropy_loss, y_hat, y)
-forward(::BroadcastedOperator{typeof(cross_entropy_loss)}, y_hat, y) = AccuracyModule.loss_acc(y_hat, y)
-backward(node::BroadcastedOperator{typeof(cross_entropy_loss)}, y_hat, y, g) = tuple(AccuracyModule.softmax(y_hat) - y)
-
-dense(x::GraphNode, w::GraphNode, b::GraphNode) = BroadcastedOperator(dense, x, w, b)
-forward(::BroadcastedOperator{typeof(dense)}, x, w, b) = w * x .+ b
-backward(::BroadcastedOperator{typeof(dense)}, x, w, b, g) = tuple(w' * g, g * x', sum(g, dims=2))
-
-rnn(x::GraphNode, w::GraphNode, b::GraphNode, hw::GraphNode, state::GraphNode) = BroadcastedOperator(rnn, x, w, b, hw, state)
-forward(o::BroadcastedOperator{typeof(rnn)}, x, w, b, hw, state) = let
-    o.inputs[5].output = o.inputs[5].output .+ tanh.(w * x .+ hw * state)
-#     o.inputs[5].output = tanh.(w * x .+ hw * state)
-    # TODO consider trying to make an array of hidden functions, even consider array of weights
-    tanh.(w * x .+ hw * state .+ b)
+forward(::BroadcastedOperator{typeof(cross_entropy_loss)}, y_hat, y) = AccuracyModule.loss(y_hat, y)
+backward(::BroadcastedOperator{typeof(cross_entropy_loss)}, y_hat, y, g) = let
+    tuple(g .* AccuracyModule.softmax(y_hat) - y)
 end
-backward(::BroadcastedOperator{typeof(rnn)}, x, w, b, hw, state, g) = let
+
+dense_layer(x::GraphNode, w::GraphNode, b::GraphNode) = BroadcastedOperator(dense_layer, x, w, b)
+forward(::BroadcastedOperator{typeof(dense_layer)}, x, w, b) = w * x .+ b
+# backward(::BroadcastedOperator{typeof(dense_layer)}, x, w, b, g) = let
+#     dz_dw = x
+#     da_dz = 1
+#     dc_da = g
+#     @show size(dz_dw)
+#     @show size(da_dz)
+#     @show size(dc_da)
+#     tuple(w' * g, dz_dw * da_dz * dc_da, sum(g, dims=2))
+# end
+backward(::BroadcastedOperator{typeof(dense_layer)}, x, w, b, g) = tuple(w' * g, g * x', mean(g, dims=2))
+# backward(::BroadcastedOperator{typeof(dense_layer)}, x, w, b, g) = tuple(g * x',w' * g,  sum(g, dims=2))
+
+rnn_layer(x::GraphNode, w::GraphNode, b::GraphNode, hw::GraphNode, state::GraphNode) = BroadcastedOperator(rnn_layer, x, w, b, hw, state)
+forward(o::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, state) = let
+    h = tanh.(w * x .+ hw * state .+ b)
+    o.inputs[5].output = reshape_cell_output(h, x) # This is how Flux saves it's hidden state
+    h
+end
+backward(::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, state, g) = let
     g = (1 .- tanh.(w * x).^2) .* g
 #     println(string("Backward ", sum(w' * g), " ", sum(g * x'), " ", sum(g, dims=2), " ", sum(g * state'), " ", sum(x)))
+
+# Something is wrong in here all of the calculations for gradients are wrong somehow 0.0
     tuple(w' * g, g * x', sum(g, dims=2), g * state', (hw * state .+ w * x) ./ 2) # returning x crashes 2nd epoch
 end
+
+reshape_cell_output(h, x) = reshape(h, :, size(x)[2:end]...)
