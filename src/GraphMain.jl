@@ -21,12 +21,13 @@ end
 
 function update_weights!(graph::Vector, optimizer::GradientOptimizersModule.GradientOptimizer)
     for node in graph
-        if isa(node, Variable) && (node.name == "states" || node.name == "x")
-            node.output = nothing
-            node.gradient = nothing
-        elseif isa(node, Variable) && hasproperty(node, :gradient) && node.gradient != nothing
-            node.output .-= optimizer(node.gradient)
-            node.gradient .= 0
+        if isa(node, Variable)
+            if node.gradient != nothing
+                node.output .-= optimizer(node.gradient)
+                node.gradient .= 0
+            elseif node.gradient == nothing
+                node.output = nothing
+            end
         end
     end
 end
@@ -77,6 +78,7 @@ function main()
             backward!(graph, seed=gradient)
             update_weights!(graph, optimizer)
         end
+        states.output = nothing
         test_graph = topological_sort(d)
 
         x.output = test_x[  1:196,:]
@@ -94,7 +96,6 @@ function main()
         loss = AccuracyModule.loss(result, test_y)
         acc = AccuracyModule.accuracy(result, test_y)
 
-        states.output = zeros(Float32, size(x.output))
         @show epoch loss acc
     end
     plot(batch_loss, xlabel="Batch num", ylabel="loss", title="Loss over batches")

@@ -123,7 +123,7 @@ forward(o::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, states) = let
     end
     h = tanh.(w * x .+ hw * state .+ b)
 
-    push!(o.inputs[5].output, reshape_cell_output(h, x))
+    push!(o.inputs[5].output, h)
     h
 end
 backward(::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, states, g) = let
@@ -142,14 +142,4 @@ backward(::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, states, g) = let
     end
 
     tuple(w' * g, dw, db, dhw, nothing)
-#     tuple(w' * g, g * x', sum(g, dims=2), g * state', nothing)
 end
-
-reshape_cell_output(h, x) = reshape(h, :, size(x)[2:end]...)
-
-# backward(::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, state, g) = let
-#     f = NNlib.fast_act(tanh_deriv, x)
-#     xT = convert(Matrix{Float32}, x)
-#     h = f(w * xT .+ hw * state .+ b) .* g
-#     tuple(w' * g, h * x', sum(h, dims=2), h * state', nothing)
-# end

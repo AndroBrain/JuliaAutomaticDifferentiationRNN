@@ -15,14 +15,6 @@ module UtilsModule
       (rand(Float32, dims...) .- 0.5f0) .* scale
     end
 
-    function zeros32(dims)
-        return zeros(Float32, dims)
-    end
-
-    function _match_eltype(layer, ::Type{T}, x::AbstractArray{<:Union{AbstractFloat, Integer}}) where {T}
-      convert(AbstractArray{T}, x)
-    end
-
     function identity(x)
         return x
     end
@@ -32,11 +24,6 @@ module UtilsModule
     end
 
     function tanh_derivative(x)
-        mult = tanh(x) * tanh(x)
-        return ones32(size(x)) - mult
-    end
-
-    function create_bias(weights::AbstractArray, bias::Bool, dims::Integer...)
-      bias ? fill!(similar(weights, dims...), 0) : false
+        return ones(Float32, size(x)) - tanh.(x).^2
     end
 end
