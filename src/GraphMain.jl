@@ -31,14 +31,6 @@ function update_weights!(graph::Vector, optimizer::GradientOptimizersModule.Grad
     end
 end
 
-function reset_state!(graph::Vector)
-    for node in graph
-        if isa(node, Variable) && hasproperty(node, :gradient) && node.gradient != nothing
-            node.gradient .= 0
-        end
-    end
-end
-
 function main()
     batch_size = 100
     train_x, train_y, train_x_batched, train_y_batched, test_x, test_y = load_data(batch_size)
@@ -46,7 +38,6 @@ function main()
     epochs = 5
 
     x = Variable([0.], name="x")
-    y = Variable([0.], name="y")
 
     wd = Variable(UtilsModule.glorot_uniform(10, 64))
     bd = Variable(UtilsModule.glorot_uniform(10, ))
@@ -67,9 +58,7 @@ function main()
     for epoch in 1:epochs
         batches = randperm(size(train_x_batched, 1))
         @time for batch in batches
-            reset_state!(graph)
             states.output = nothing
-            y.output = train_y_batched[batch]
             x.output = train_x_batched[batch][  1:196,:]
             forward!(graph)
 
@@ -82,17 +71,15 @@ function main()
             x.output = train_x_batched[batch][589:end,:]
             result = forward!(graph)
 
-            loss, acc, _ = AccuracyModule.loss_and_accuracy(result, train_y_batched[batch])
+            loss = AccuracyModule.loss(result, train_y_batched[batch])
             push!(batch_loss, loss)
-            gradient = AccuracyModule.get_gradient(result, y.output) ./ batch_size
+            gradient = AccuracyModule.gradient(result, train_y_batched[batch]) ./ batch_size
             backward!(graph, seed=gradient)
             update_weights!(graph, optimizer)
         end
         test_graph = topological_sort(d)
 
-        y.output = test_y
         x.output = test_x[  1:196,:]
-        reset_state!(test_graph)
         forward!(test_graph)
 
         x.output = test_x[197:392,:]
@@ -104,7 +91,8 @@ function main()
         x.output = test_x[589:end,:]
         result = forward!(test_graph)
 
-        loss, acc, _ = AccuracyModule.loss_and_accuracy(result, test_y)
+        loss = AccuracyModule.loss(result, test_y)
+        acc = AccuracyModule.accuracy(result, test_y)
 
         states.output = zeros(Float32, size(x.output))
         @show epoch loss acc
