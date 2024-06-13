@@ -42,16 +42,20 @@ function main()
 
     wd = Variable(UtilsModule.glorot_uniform(10, 64))
     bd = Variable(UtilsModule.glorot_uniform(10, ))
+    fd = Constant(UtilsModule.identity)
+    dfd = Constant(UtilsModule.identity_deriv)
 
     wr = Variable(UtilsModule.glorot_uniform(64, 196))
     br = Variable(UtilsModule.glorot_uniform(64, ))
     hwr = Variable(UtilsModule.glorot_uniform(64, 64))
     states = Variable(nothing, name = "states")
+    fr = Constant(tanh)
+    dfr = Constant(UtilsModule.tanh_deriv)
 
     optimizer = GradientOptimizersModule.Descent(15e-3)
 
-    r = rnn_layer(x, wr, br, hwr, states)
-    d = dense_layer(r, wd, bd)
+    r = rnn_layer(x, wr, br, hwr, states, fr, dfr)
+    d = dense_layer(r, wd, bd, fd, dfd)
     graph = topological_sort(d)
 
     batch_loss = Float64[]

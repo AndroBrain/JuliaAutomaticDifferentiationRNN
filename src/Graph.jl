@@ -215,25 +215,27 @@ backward(::BroadcastedOperator{typeof(max)}, x, y, g) =
         tuple(Jx' * g, Jy' * g)
     end
 
+dense_layer(x::GraphNode, w::GraphNode, b::GraphNode, f::Constant, df::Constant) = BroadcastedOperator(dense_layer, x, w, b, f, df)
+forward(::BroadcastedOperator{typeof(dense_layer)}, x, w, b, f, df) = f(w * x .+ b)
+backward(::BroadcastedOperator{typeof(dense_layer)}, x, w, b, f, df, g) = let
+    g = df(w * x .+ b) .* g
+    tuple(w' * g, g * x', sum(g, dims=2))
+end
 
-dense_layer(x::GraphNode, w::GraphNode, b::GraphNode) = BroadcastedOperator(dense_layer, x, w, b)
-forward(::BroadcastedOperator{typeof(dense_layer)}, x, w, b) = w * x .+ b
-backward(::BroadcastedOperator{typeof(dense_layer)}, x, w, b, g) = tuple(w' * g, g * x', sum(g, dims=2))
-
-rnn_layer(x::GraphNode, w::GraphNode, b::GraphNode, hw::GraphNode, states::GraphNode) = BroadcastedOperator(rnn_layer, x, w, b, hw, states)
-forward(o::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, states) = let
+rnn_layer(x::GraphNode, w::GraphNode, b::GraphNode, hw::GraphNode, states::GraphNode, f::Constant, df::Constant) = BroadcastedOperator(rnn_layer, x, w, b, hw, states, f, df)
+forward(o::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, states, f, df) = let
     if states == nothing
         state = zeros(Float32, size(w, 1), size(x, 2))
         o.inputs[5].output = Matrix{Float32}[]
     else
         state = last(states)
     end
-    h = tanh.(w * x .+ hw * state .+ b)
+    h = f.(w * x .+ hw * state .+ b)
 
     push!(o.inputs[5].output, h)
     h
 end
-backward(::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, states, g) = let
+backward(::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, states, f, df, g) = let
     prev_state = zeros(Float32, size(states[1]))
     dw = zeros(Float32, size(w))
     dhw = zeros(Float32, size(hw))
@@ -241,10 +243,10 @@ backward(::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, states, g) = let
     for state in reverse(states)
         zL = w * x .+ hw * state .+ b
         dp = state .+ hw * prev_state
-        dtanh = (1 .- tanh.(zL).^2) .* dp .* g
-        dw .+= dtanh * x'
-        dhw .+= dtanh * state'
-        db .+= mean(dtanh, dims=2)
+        dt = df(zL) .* dp .* g
+        dw .+= dt * x'
+        dhw .+= dt * state'
+        db .+= mean(dt, dims=2)
         prev_state = state
     end
 

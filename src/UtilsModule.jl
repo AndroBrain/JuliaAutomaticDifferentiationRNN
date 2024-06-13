@@ -19,11 +19,11 @@ module UtilsModule
         return x
     end
 
-    function identity_derivative(x)
-        return 1
+    function identity_deriv(x)
+        return ones(size(x))
     end
 
-    function tanh_derivative(x)
+    function tanh_deriv(x)
         return ones(Float32, size(x)) - tanh.(x).^2
     end
 end
