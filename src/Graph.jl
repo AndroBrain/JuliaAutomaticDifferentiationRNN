@@ -113,21 +113,21 @@ dense_layer(x::GraphNode, w::GraphNode, b::GraphNode) = BroadcastedOperator(dens
 forward(::BroadcastedOperator{typeof(dense_layer)}, x, w, b) = w * x .+ b
 backward(::BroadcastedOperator{typeof(dense_layer)}, x, w, b, g) = tuple(w' * g, g * x', sum(g, dims=2))
 
-rnn_layer(x::GraphNode, w::GraphNode, b::GraphNode, hw::GraphNode, state::GraphNode) = BroadcastedOperator(rnn_layer, x, w, b, hw, state)
-forward(o::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, state) = let
-    if state == nothing
+rnn_layer(x::GraphNode, w::GraphNode, b::GraphNode, hw::GraphNode, states::GraphNode) = BroadcastedOperator(rnn_layer, x, w, b, hw, states)
+forward(o::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, states) = let
+    if states == nothing
         state = zeros(Float32, size(w, 1), size(x, 2))
         o.inputs[5].output = Matrix{Float32}[]
     else
-        state = last(state)
+        state = last(states)
     end
     h = tanh.(w * x .+ hw * state .+ b)
 
     push!(o.inputs[5].output, reshape_cell_output(h, x))
     h
 end
-backward(::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, state, g) = let
-    state = last(state)
+backward(::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, states, g) = let
+    state = last(states)
     zL = w * x .+ hw * state .+ b
     g = (1 .- tanh.(zL).^2) .* g
 #     println(string("Backward ", sum(w' * g), " ", sum(g * x'), " ", sum(g, dims=2), " ", sum(g * state'), " ", sum(x)))

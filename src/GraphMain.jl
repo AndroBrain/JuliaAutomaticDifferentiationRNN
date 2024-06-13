@@ -20,7 +20,7 @@ end
 
 function update_weights!(graph::Vector, lr::Float64, batch_size::Int64)
     for node in graph
-        if isa(node, Variable) && (node.name == "state" || node.name == "x")
+        if isa(node, Variable) && (node.name == "states" || node.name == "x")
                 node.output = nothing
                 node.gradient = nothing
         elseif isa(node, Variable) && hasproperty(node, :gradient) && node.gradient != nothing
@@ -58,9 +58,9 @@ function main()
     wr = Variable(UtilsModule.glorot_uniform(64, 196), name = "wr")
     br = Variable(UtilsModule.glorot_uniform(64, ), name = "br")
     hwr = Variable(UtilsModule.glorot_uniform(64, 64), name = "hwr")
-    state = Variable(nothing, name = "state")
+    states = Variable(nothing, name = "states")
 
-    r = rnn_layer(x, wr, br, hwr, state)
+    r = rnn_layer(x, wr, br, hwr, states)
     d = dense_layer(r, wd, bd)
     graph = topological_sort(d)
 
@@ -71,7 +71,7 @@ function main()
     for epoch in 1:epochs
         @time for batch in batches
             reset_state!(graph)
-            state.output = nothing
+            states.output = nothing
             y.output = train_y_batched[batch]
             x.output = train_x_batched[batch][  1:196,:]
             forward!(graph)
@@ -110,7 +110,7 @@ function main()
 
         loss, acc, _ = AccuracyModule.loss_and_accuracy(result, test_y)
 
-        state.output = zeros(Float32, size(x.output))
+        states.output = zeros(Float32, size(x.output))
         @show epoch loss acc
     end
     plot(batch_loss, xlabel="Batch num", ylabel="loss", title="Loss over batches")
