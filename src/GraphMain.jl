@@ -2,8 +2,9 @@ include("Graph.jl")
 include("DataModule.jl")
 include("UtilsModule.jl")
 include("AccuracyModule.jl")
+include("GradientOptimizersModule.jl")
 
-using .DataModule, .UtilsModule, .AccuracyModule
+using .DataModule, .UtilsModule, .AccuracyModule, .GradientOptimizersModule
 using Random, Plots
 
 function load_data(batch_size)
@@ -18,17 +19,13 @@ function load_data(batch_size)
     return train_x, train_y, train_x_batched, train_y_batched, test_x, test_y
 end
 
-function update_weights!(graph::Vector, lr::Float64, batch_size::Int64)
+function update_weights!(graph::Vector, optimizer::GradientOptimizersModule.GradientOptimizer)
     for node in graph
         if isa(node, Variable) && (node.name == "states" || node.name == "x")
-                node.output = nothing
-                node.gradient = nothing
+            node.output = nothing
+            node.gradient = nothing
         elseif isa(node, Variable) && hasproperty(node, :gradient) && node.gradient != nothing
-#             println(string("Update ", node.name, " ", sum(node.output), " ", sum(node.gradient)))
-#                 println(string("Sum1: ", node.name, " gradient: ", sum(node.gradient), " output ", sum(node.output)))
-            node.gradient ./= batch_size
-            node.output .-= lr * node.gradient
-#                 println(string("Sum2: ", node.name, " gradient: ", sum(node.gradient), " output ", sum(node.output)))
+            node.output .-= optimizer(node.gradient)
             node.gradient .= 0
         end
     end
@@ -51,19 +48,19 @@ function main()
     x = Variable([0.], name="x")
     y = Variable([0.], name="y")
 
-    wd = Variable(UtilsModule.glorot_uniform(10, 64), name="wd")
-    bd = Variable(UtilsModule.glorot_uniform(10, ), name="bd")
+    wd = Variable(UtilsModule.glorot_uniform(10, 64))
+    bd = Variable(UtilsModule.glorot_uniform(10, ))
 
-    wr = Variable(UtilsModule.glorot_uniform(64, 196), name = "wr")
-    br = Variable(UtilsModule.glorot_uniform(64, ), name = "br")
-    hwr = Variable(UtilsModule.glorot_uniform(64, 64), name = "hwr")
+    wr = Variable(UtilsModule.glorot_uniform(64, 196))
+    br = Variable(UtilsModule.glorot_uniform(64, ))
+    hwr = Variable(UtilsModule.glorot_uniform(64, 64))
     states = Variable(nothing, name = "states")
+
+    optimizer = GradientOptimizersModule.Descent(15e-3)
 
     r = rnn_layer(x, wr, br, hwr, states)
     d = dense_layer(r, wd, bd)
     graph = topological_sort(d)
-
-    # RNN cell per 196 pixels and then sum the results?
 
     batch_loss = Float64[]
     println("Training")
@@ -87,10 +84,9 @@ function main()
 
             loss, acc, _ = AccuracyModule.loss_and_accuracy(result, train_y_batched[batch])
             push!(batch_loss, loss)
-            gradient = AccuracyModule.get_gradient(result, y.output)
+            gradient = AccuracyModule.get_gradient(result, y.output) ./ batch_size
             backward!(graph, seed=gradient)
-            # Update gradientu raczej na samym końcu jak w Fluxie
-            update_weights!(graph, 15e-3, batch_size)
+            update_weights!(graph, optimizer)
         end
         test_graph = topological_sort(d)
 
