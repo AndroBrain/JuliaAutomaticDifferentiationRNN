@@ -2,6 +2,7 @@ include("AccuracyModule.jl")
 using .AccuracyModule
 using LinearAlgebra
 using Flux
+using NNlib
 import Statistics: mean
 # Types
 abstract type GraphNode end
@@ -110,30 +111,27 @@ end
 
 dense_layer(x::GraphNode, w::GraphNode, b::GraphNode) = BroadcastedOperator(dense_layer, x, w, b)
 forward(::BroadcastedOperator{typeof(dense_layer)}, x, w, b) = w * x .+ b
-# backward(::BroadcastedOperator{typeof(dense_layer)}, x, w, b, g) = let
-#     dz_dw = x
-#     da_dz = 1
-#     dc_da = g
-#     @show size(dz_dw)
-#     @show size(da_dz)
-#     @show size(dc_da)
-#     tuple(w' * g, dz_dw * da_dz * dc_da, sum(g, dims=2))
-# end
-backward(::BroadcastedOperator{typeof(dense_layer)}, x, w, b, g) = tuple(w' * g, g * x', mean(g, dims=2))
-# backward(::BroadcastedOperator{typeof(dense_layer)}, x, w, b, g) = tuple(g * x',w' * g,  sum(g, dims=2))
+backward(::BroadcastedOperator{typeof(dense_layer)}, x, w, b, g) = tuple(w' * g, g * x', sum(g, dims=2))
 
 rnn_layer(x::GraphNode, w::GraphNode, b::GraphNode, hw::GraphNode, state::GraphNode) = BroadcastedOperator(rnn_layer, x, w, b, hw, state)
-forward(o::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, state) = let
+forward(o::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, state::AbstractMatrix{T}) where {T} = let
     h = tanh.(w * x .+ hw * state .+ b)
     o.inputs[5].output = reshape_cell_output(h, x) # This is how Flux saves it's hidden state
     h
 end
 backward(::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, state, g) = let
-    g = (1 .- tanh.(w * x).^2) .* g
+    zL = w * x
+    g = (1 .- tanh.(zL).^2) .* g
 #     println(string("Backward ", sum(w' * g), " ", sum(g * x'), " ", sum(g, dims=2), " ", sum(g * state'), " ", sum(x)))
 
-# Something is wrong in here all of the calculations for gradients are wrong somehow 0.0
-    tuple(w' * g, g * x', sum(g, dims=2), g * state', (hw * state .+ w * x) ./ 2) # returning x crashes 2nd epoch
+    tuple(w' * g, g * x', sum(g, dims=2), g * state', nothing)
 end
 
 reshape_cell_output(h, x) = reshape(h, :, size(x)[2:end]...)
+
+# backward(::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, state, g) = let
+#     f = NNlib.fast_act(tanh_deriv, x)
+#     xT = convert(Matrix{Float32}, x)
+#     h = f(w * xT .+ hw * state .+ b) .* g
+#     tuple(w' * g, h * x', sum(h, dims=2), h * state', nothing)
+# end

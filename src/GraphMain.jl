@@ -27,10 +27,10 @@ function update_weights!(graph::Vector, lr::Float64, batch_size::Int64)
                 node.gradient = nothing
 #                 println(string("UpdateSPECIAL ", node.name, " ", sum(node.output)))
             else
-                println(string("Sum1: ", node.name, " gradient: ", sum(node.gradient), " output ", sum(node.output)))
+#                 println(string("Sum1: ", node.name, " gradient: ", sum(node.gradient), " output ", sum(node.output)))
                 node.gradient ./= batch_size
                 node.output .-= lr * node.gradient
-                println(string("Sum2: ", node.name, " gradient: ", sum(node.gradient), " output ", sum(node.output)))
+#                 println(string("Sum2: ", node.name, " gradient: ", sum(node.gradient), " output ", sum(node.output)))
                 node.gradient .= 0
             end
         end
@@ -63,9 +63,8 @@ function main()
     hwr = Variable(UtilsModule.glorot_uniform(64, 64), name = "hwr")
     state = Variable(zeros(Float32, size(x.output)), name = "state")
 
-    r = rnn(x, wr, br, hwr, state)
-    d = dense(r, wd, bd)
-    e = cross_entropy_loss(d, y)
+    r = rnn_layer(x, wr, br, hwr, state)
+    d = dense_layer(r, wd, bd)
     graph = topological_sort(d)
 
     # RNN cell per 196 pixels and then sum the results?
@@ -91,11 +90,10 @@ function main()
 
             loss, acc, _ = AccuracyModule.loss_and_accuracy(result, train_y_batched[batch])
             push!(batch_loss, loss)
-            graph_optimizer = topological_sort(e)
-            backward!(graph_optimizer)
+            gradient = AccuracyModule.get_gradient(result, y.output)
+            backward!(graph, seed=gradient)
             # Update gradientu raczej na samym końcu jak w Fluxie
             update_weights!(graph, 15e-3, batch_size)
-            reset_state!(graph_optimizer)
         end
         reset_state!(graph)
 

@@ -8,6 +8,11 @@ module AccuracyModule
         return exp_x ./ sum(exp_x, dims=1)
     end
 
+    function get_gradient(predictions, targets)
+        probabilities = softmax(predictions)
+        return Float32.(probabilities .- targets)
+    end
+
     function cross_entropy_loss_with_gradient(predictions, targets)
         probabilities = softmax(predictions)
         loss = -mean(sum(targets .* log.(probabilities), dims=1))
