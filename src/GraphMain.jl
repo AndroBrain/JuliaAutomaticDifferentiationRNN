@@ -45,7 +45,6 @@ end
 function main()
     batch_size = 100
     train_x, train_y, train_x_batched, train_y_batched, test_x, test_y = load_data(batch_size)
-    batches = randperm(size(train_x_batched, 1))
 
     epochs = 5
 
@@ -69,6 +68,7 @@ function main()
     batch_loss = Float64[]
     println("Training")
     for epoch in 1:epochs
+        batches = randperm(size(train_x_batched, 1))
         @time for batch in batches
             reset_state!(graph)
             states.output = nothing

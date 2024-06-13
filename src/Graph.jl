@@ -127,12 +127,21 @@ forward(o::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, states) = let
     h
 end
 backward(::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, states, g) = let
-    state = last(states)
-    zL = w * x .+ hw * state .+ b
-    g = (1 .- tanh.(zL).^2) .* g
-#     println(string("Backward ", sum(w' * g), " ", sum(g * x'), " ", sum(g, dims=2), " ", sum(g * state'), " ", sum(x)))
+    prev_g = zeros(Float32, size(w, 1), size(x, 2))
+    dw = zeros(Float32, size(w))
+    dhw = zeros(Float32, size(hw))
+    db = zeros(Float32, size(b))
+    for state in reverse(states)
+        zL = hw * state
+        dtanh = (1 .- tanh.(zL).^2) .* (g .+ prev_g)
+        dw .+= dtanh * x'
+        dhw .+= dtanh * state'
+        db .+= mean(dtanh, dims=2)
+        prev_g = hw' * dtanh
+    end
 
-    tuple(w' * g, g * x', sum(g, dims=2), g * state', nothing)
+    tuple(w' * g, dw, db, dhw, nothing)
+#     tuple(w' * g, g * x', sum(g, dims=2), g * state', nothing)
 end
 
 reshape_cell_output(h, x) = reshape(h, :, size(x)[2:end]...)
