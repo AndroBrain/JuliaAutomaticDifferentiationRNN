@@ -23,10 +23,6 @@ module RecurrentNetworkModule
     # Forward propagation
     function (m::RNNCell)(x::AbstractVecOrMat)
       m.prev_input = x
-      @show size(m.hidden_weights * m.state)
-      @show size(m.hidden_weights)
-      @show size(m.input_weights * x)
-      @show size(m.state)
       m.state = m.activation.(m.input_weights * x .+ m.hidden_weights * m.state .+ m.bias)
       return m.state
     end

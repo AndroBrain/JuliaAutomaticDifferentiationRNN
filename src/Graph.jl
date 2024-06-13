@@ -127,17 +127,18 @@ forward(o::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, states) = let
     h
 end
 backward(::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, states, g) = let
-    prev_g = zeros(Float32, size(w, 1), size(x, 2))
+    prev_state = zeros(Float32, size(states[1]))
     dw = zeros(Float32, size(w))
     dhw = zeros(Float32, size(hw))
     db = zeros(Float32, size(b))
     for state in reverse(states)
-        zL = hw * state
-        dtanh = (1 .- tanh.(zL).^2) .* (g .+ prev_g)
+        zL = w * x .+ hw * state .+ b
+        dp = state .+ hw * prev_state
+        dtanh = (1 .- tanh.(zL).^2) .* dp .* g
         dw .+= dtanh * x'
         dhw .+= dtanh * state'
         db .+= mean(dtanh, dims=2)
-        prev_g = hw' * dtanh
+        prev_state = state
     end
 
     tuple(w' * g, dw, db, dhw, nothing)

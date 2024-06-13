@@ -33,4 +33,11 @@ module DataModule
         end
         return arr
     end
+
+    function mat_shuffle(x, y)
+        perm = randperm(size(x, 2))
+        x = x[:, perm]
+        y = y[:, perm]
+        return x,y
+    end
 end
