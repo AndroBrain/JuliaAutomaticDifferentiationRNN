@@ -20,19 +20,16 @@ end
 
 function update_weights!(graph::Vector, lr::Float64, batch_size::Int64)
     for node in graph
-        if isa(node, Variable) && hasproperty(node, :gradient) && node.gradient != nothing
-#             println(string("Update ", node.name, " ", sum(node.output), " ", sum(node.gradient)))
-            if node.name == "state" || node.name == "x"
-                node.output = node.gradient
+        if isa(node, Variable) && (node.name == "state" || node.name == "x")
+                node.output = nothing
                 node.gradient = nothing
-#                 println(string("UpdateSPECIAL ", node.name, " ", sum(node.output)))
-            else
+        elseif isa(node, Variable) && hasproperty(node, :gradient) && node.gradient != nothing
+#             println(string("Update ", node.name, " ", sum(node.output), " ", sum(node.gradient)))
 #                 println(string("Sum1: ", node.name, " gradient: ", sum(node.gradient), " output ", sum(node.output)))
-                node.gradient ./= batch_size
-                node.output .-= lr * node.gradient
+            node.gradient ./= batch_size
+            node.output .-= lr * node.gradient
 #                 println(string("Sum2: ", node.name, " gradient: ", sum(node.gradient), " output ", sum(node.output)))
-                node.gradient .= 0
-            end
+            node.gradient .= 0
         end
     end
 end
@@ -61,7 +58,7 @@ function main()
     wr = Variable(UtilsModule.glorot_uniform(64, 196), name = "wr")
     br = Variable(UtilsModule.glorot_uniform(64, ), name = "br")
     hwr = Variable(UtilsModule.glorot_uniform(64, 64), name = "hwr")
-    state = Variable(zeros(Float32, size(x.output)), name = "state")
+    state = Variable(nothing, name = "state")
 
     r = rnn_layer(x, wr, br, hwr, state)
     d = dense_layer(r, wd, bd)
@@ -74,9 +71,9 @@ function main()
     for epoch in 1:epochs
         @time for batch in batches
             reset_state!(graph)
+            state.output = nothing
             y.output = train_y_batched[batch]
             x.output = train_x_batched[batch][  1:196,:]
-            state.output = zeros(Float32, 64, size(x.output, 2))
             forward!(graph)
 
             x.output = train_x_batched[batch][197:392,:]
@@ -95,13 +92,10 @@ function main()
             # Update gradientu raczej na samym końcu jak w Fluxie
             update_weights!(graph, 15e-3, batch_size)
         end
-        reset_state!(graph)
-
         test_graph = topological_sort(d)
 
         y.output = test_y
         x.output = test_x[  1:196,:]
-        state.output = zeros(Float32, 64, size(x.output, 2))
         reset_state!(test_graph)
         forward!(test_graph)
 

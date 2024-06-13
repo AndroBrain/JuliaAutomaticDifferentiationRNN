@@ -114,13 +114,21 @@ forward(::BroadcastedOperator{typeof(dense_layer)}, x, w, b) = w * x .+ b
 backward(::BroadcastedOperator{typeof(dense_layer)}, x, w, b, g) = tuple(w' * g, g * x', sum(g, dims=2))
 
 rnn_layer(x::GraphNode, w::GraphNode, b::GraphNode, hw::GraphNode, state::GraphNode) = BroadcastedOperator(rnn_layer, x, w, b, hw, state)
-forward(o::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, state::AbstractMatrix{T}) where {T} = let
+forward(o::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, state) = let
+    if state == nothing
+        state = zeros(Float32, size(w, 1), size(x, 2))
+        o.inputs[5].output = Matrix{Float32}[]
+    else
+        state = last(state)
+    end
     h = tanh.(w * x .+ hw * state .+ b)
-    o.inputs[5].output = reshape_cell_output(h, x) # This is how Flux saves it's hidden state
+
+    push!(o.inputs[5].output, reshape_cell_output(h, x))
     h
 end
 backward(::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, state, g) = let
-    zL = w * x
+    state = last(state)
+    zL = w * x .+ hw * state .+ b
     g = (1 .- tanh.(zL).^2) .* g
 #     println(string("Backward ", sum(w' * g), " ", sum(g * x'), " ", sum(g, dims=2), " ", sum(g * state'), " ", sum(x)))
 
