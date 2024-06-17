@@ -215,14 +215,14 @@ backward(::BroadcastedOperator{typeof(max)}, x, y, g) =
         tuple(Jx' * g, Jy' * g)
     end
 
-dense_layer(x::GraphNode, w::GraphNode, b::GraphNode, f::Constant, df::Constant) = BroadcastedOperator(dense_layer, x, w, b, f, df)
-forward(::BroadcastedOperator{typeof(dense_layer)}, x, w, b, f, df) = f(w * x .+ b)
+dense_layer(x::GraphNode, w::GraphNode, b::GraphNode, f::Constant{T1}, df::Constant{T2}) where {T1 <: Function, T2 <: Function} = BroadcastedOperator(dense_layer, x, w, b, f, df)
+forward(::BroadcastedOperator{typeof(dense_layer)}, x, w, b, f, df) = f.(w * x .+ b)
 backward(::BroadcastedOperator{typeof(dense_layer)}, x, w, b, f, df, g) = let
-    g = df(w * x .+ b) .* g
+    g = df.(w * x .+ b) .* g
     tuple(w' * g, g * x', sum(g, dims=2))
 end
 
-rnn_layer(x::GraphNode, w::GraphNode, b::GraphNode, hw::GraphNode, states::GraphNode, f::Constant, df::Constant) = BroadcastedOperator(rnn_layer, x, w, b, hw, states, f, df)
+rnn_layer(x::GraphNode, w::GraphNode, b::GraphNode, hw::GraphNode, states::GraphNode, f::Constant{T1}, df::Constant{T2}) where {T1 <: Function, T2 <: Function} = BroadcastedOperator(rnn_layer, x, w, b, hw, states, f, df)
 forward(o::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, states, f, df) = let
     if states == nothing
         state = zeros(Float32, size(w, 1), size(x, 2))
@@ -243,7 +243,7 @@ backward(::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, states, f, df, g
     for state in reverse(states)
         zL = w * x .+ hw * state .+ b
         dp = state .+ hw * prev_state
-        dt = df(zL) .* dp .* g
+        dt = df.(zL) .* dp .* g
         dw .+= dt * x'
         dhw .+= dt * state'
         db .+= mean(dt, dims=2)

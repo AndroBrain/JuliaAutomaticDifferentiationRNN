@@ -20,10 +20,10 @@ module UtilsModule
     end
 
     function identity_deriv(x)
-        return ones(size(x))
+        return 1
     end
 
     function tanh_deriv(x)
-        return ones(Float32, size(x)) - tanh.(x).^2
+        return 1 - tanh(x)^2
     end
 end
