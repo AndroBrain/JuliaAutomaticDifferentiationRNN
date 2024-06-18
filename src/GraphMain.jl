@@ -51,10 +51,13 @@ function main()
     states = Variable(nothing, name = "states")
     fr = Constant(tanh)
     dfr = Constant(UtilsModule.tanh_deriv)
+    wr0 = Constant(zeros(Float32, 64, 196))
+    hwr0 = Constant(zeros(Float32, 64, 64))
+    br0 = Constant(zeros(Float32, 64, ))
 
     optimizer = GradientOptimizersModule.Descent(15e-3)
 
-    r = rnn_layer(x, wr, br, hwr, states, fr, dfr)
+    r = rnn_layer(x, wr, br, hwr, states, fr, dfr, wr0, hwr0, br0)
     d = dense_layer(r, wd, bd, fd, dfd)
     graph = topological_sort(d)
 
