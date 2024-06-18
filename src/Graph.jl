@@ -225,12 +225,11 @@ end
 rnn_layer(x::GraphNode, w::GraphNode, b::GraphNode, hw::GraphNode, states::GraphNode, f::Constant{T1}, df::Constant{T2}) where {T1 <: Function, T2 <: Function} = BroadcastedOperator(rnn_layer, x, w, b, hw, states, f, df)
 forward(o::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, states, f, df) = let
     if states == nothing
-        state = zeros(Float32, size(w, 1), size(x, 2))
         o.inputs[5].output = Matrix{Float32}[]
+        h = f.(w * x .+ b)
     else
-        state = last(states)
+        h = f.(w * x .+ hw * last(states) .+ b)
     end
-    h = f.(w * x .+ hw * state .+ b)
 
     push!(o.inputs[5].output, h)
     h
@@ -250,5 +249,5 @@ backward(::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, states, f, df, g
         prev_state = state
     end
 
-    tuple(w' * g, dw, db, dhw, nothing)
+    tuple(w' * g, dw, db, dhw)
 end
