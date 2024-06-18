@@ -1,8 +1,6 @@
 include("AccuracyModule.jl")
 using .AccuracyModule
-using LinearAlgebra
-using Flux
-using NNlib
+using LinearAlgebra, StaticArrays
 import Statistics: mean
 # Types
 abstract type GraphNode end
@@ -235,13 +233,17 @@ forward(o::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, states, f, df) =
     h
 end
 backward(::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, states, f, df, g) = let
-    prev_state = zeros(Float32, size(states[1]))
+    prev_state = nothing
     dw = zeros(Float32, size(w))
     dhw = zeros(Float32, size(hw))
     db = zeros(Float32, size(b))
     for state in reverse(states)
+        if prev_state == nothing
+            dp = state
+        else
+            dp = state .+ hw * prev_state
+        end
         zL = w * x .+ hw * state .+ b
-        dp = state .+ hw * prev_state
         dt = df.(zL) .* dp .* g
         dw .+= dt * x'
         dhw .+= dt * state'
