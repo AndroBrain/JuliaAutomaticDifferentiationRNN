@@ -226,27 +226,9 @@ forward(o::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, states, xes, f, 
         o.inputs[5].output = Matrix{Float32}[]
         o.inputs[6].output = Matrix{Float32}[]
         h = f.(w * x .+ b)
-#         @show maximum(hw)
-#         @show maximum(w)
-#         @show maximum(b)
-#         @show maximum(w * x .+ b)
-#         @show mean(w * x .+ b)
     else
         h = f.(w * x .+ hw * last(states) .+ b)
-#         @show maximum(last(states))
-#         @show maximum(hw)
-#         @show maximum(w)
-#         @show maximum(b)
-#         @show maximum(w * x .+ hw * last(states) .+ b)
-#         @show mean(w * x .+ hw * last(states) .+ b)
-#         @show mean(w * x .+ hw * last(states) .+ b)
-#         @show w * x .+ hw * last(states) .+ b
     end
-#     @show w
-#     @show hw
-#     @show b
-#     @show h
-#
     push!(o.inputs[5].output, h)
     push!(o.inputs[6].output, x)
     h

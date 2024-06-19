@@ -83,12 +83,6 @@ function main()
 
             loss = AccuracyModule.loss(result, train_y_batched[batch])
             push!(batch_loss, loss)
-#             @show size(result)
-#             @show result
-#             if isnan(loss)
-#                 @show loss
-#                 readline()
-#             end
             gradient = AccuracyModule.gradient(result, train_y_batched[batch]) ./ batch_size
             backward!(graph, seed=gradient)
             update_weights!(graph, optimizer)
