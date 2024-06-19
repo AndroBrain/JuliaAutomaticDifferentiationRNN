@@ -38,7 +38,7 @@ function main()
 
     epochs = 5
 
-    x = Variable([0.], name="x")
+    x = Variable([0.], name = "x")
 
     wd = Variable(UtilsModule.glorot_uniform(10, 64))
     bd = Variable(UtilsModule.glorot_uniform(10, ))
@@ -49,15 +49,16 @@ function main()
     br = Variable(UtilsModule.glorot_uniform(64, ))
     hwr = Variable(UtilsModule.glorot_uniform(64, 64))
     states = Variable(nothing, name = "states")
+    xes = Variable(nothing, name = "xes")
     fr = Constant(tanh)
     dfr = Constant(UtilsModule.tanh_deriv)
     wr0 = Constant(zeros(Float32, 64, 196))
     hwr0 = Constant(zeros(Float32, 64, 64))
     br0 = Constant(zeros(Float32, 64, ))
 
-    optimizer = GradientOptimizersModule.Descent(15e-3)
+    optimizer = GradientOptimizersModule.Descent(1)
 
-    r = rnn_layer(x, wr, br, hwr, states, fr, dfr, wr0, hwr0, br0)
+    r = rnn_layer(x, wr, br, hwr, states, xes, fr, dfr, wr0, hwr0, br0)
     d = dense_layer(r, wd, bd, fd, dfd)
     graph = topological_sort(d)
 
@@ -67,6 +68,7 @@ function main()
         batches = randperm(size(train_x_batched, 1))
         @time for batch in batches
             states.output = nothing
+            xes.output = nothing
             x.output = train_x_batched[batch][  1:196,:]
             forward!(graph)
 
@@ -81,10 +83,17 @@ function main()
 
             loss = AccuracyModule.loss(result, train_y_batched[batch])
             push!(batch_loss, loss)
-            gradient = AccuracyModule.gradient(result, train_y_batched[batch]) ./ batch_size
+#             @show size(result)
+#             @show result
+#             if isnan(loss)
+#                 @show loss
+#                 readline()
+#             end
+            gradient = AccuracyModule.gradient(result, train_y_batched[batch]) ./ batch_size .* 1.5e-3
             backward!(graph, seed=gradient)
             update_weights!(graph, optimizer)
         end
+        xes.output = nothing
         states.output = nothing
         test_graph = topological_sort(d)
 

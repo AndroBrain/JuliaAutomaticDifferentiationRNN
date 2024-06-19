@@ -220,37 +220,83 @@ backward(::BroadcastedOperator{typeof(dense_layer)}, x, w, b, f, df, g) = let
     tuple(w' * g, g * x', sum(g, dims=2))
 end
 
-rnn_layer(x::GraphNode, w::GraphNode, b::GraphNode, hw::GraphNode, states::GraphNode, f::Constant{T1}, df::Constant{T2}, dw::GraphNode, dhw::GraphNode, db::GraphNode) where {T1 <: Function, T2 <: Function} = BroadcastedOperator(rnn_layer, x, w, b, hw, states, f, df, dw, dhw, db)
-forward(o::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, states, f, df, dw, dhw, db) = let
+rnn_layer(x::GraphNode, w::GraphNode, b::GraphNode, hw::GraphNode, states::GraphNode, xes::GraphNode, f::Constant{T1}, df::Constant{T2}, dw::GraphNode, dhw::GraphNode, db::GraphNode) where {T1 <: Function, T2 <: Function} = BroadcastedOperator(rnn_layer, x, w, b, hw, states, xes, f, df, dw, dhw, db)
+forward(o::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, states, xes, f, df, dw, dhw, db) = let
     if states == nothing
         o.inputs[5].output = Matrix{Float32}[]
+        o.inputs[6].output = Matrix{Float32}[]
         h = f.(w * x .+ b)
+#         @show maximum(hw)
+#         @show maximum(w)
+#         @show maximum(b)
+#         @show maximum(w * x .+ b)
+#         @show mean(w * x .+ b)
     else
         h = f.(w * x .+ hw * last(states) .+ b)
+#         @show maximum(last(states))
+#         @show maximum(hw)
+#         @show maximum(w)
+#         @show maximum(b)
+#         @show maximum(w * x .+ hw * last(states) .+ b)
+#         @show mean(w * x .+ hw * last(states) .+ b)
+#         @show mean(w * x .+ hw * last(states) .+ b)
+#         @show w * x .+ hw * last(states) .+ b
     end
-
+#     @show w
+#     @show hw
+#     @show b
+#     @show h
+#
     push!(o.inputs[5].output, h)
+    push!(o.inputs[6].output, x)
     h
 end
-backward(::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, states, f, df, dw, dhw, db, g) = let
+backward(::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, states, xes, f, df, dw, dhw, db, g) = let
     prev_state = nothing
     dw_c = dw
     dhw_c = dhw
     db_c = db
 
-    for state in reverse(states)
-        if prev_state == nothing
-            dp = state
-        else
-            dp = state .+ hw * prev_state
-        end
-        zL = w * x .+ hw * state .+ b
-        dt = df.(zL) .* dp .* g
-        dw_c .+= dt * x'
-        dhw_c .+= dt * state'
-        db_c .+= mean(dt, dims=2)
-        prev_state = state
-    end
+    x = xes[4]
+    state = states[4]
+    r = df.(w * x .+ hw * state .+ b)
+    g = g .* (hw * r)
+    dw_c .+= g * x'
+    dhw_c .+= g * state'
+    db_c .+= sum(g, dims=2)
+
+    x = xes[3]
+    state = states[3]
+    r = df.(w * x .+ hw * state .+ b)
+    g = g .* (hw * r)
+    dw_c .+= g * x'
+    dhw_c .+= g * state'
+    db_c .+= sum(g, dims=2)
+
+    x = xes[2]
+    state = states[2]
+    r = df.(w * x .+ hw * state .+ b)
+    g = g .* (hw * r)
+    dw_c .+= g * x'
+    dhw_c .+= g * state'
+    db_c .+= sum(g, dims=2)
+
+    x = xes[1]
+    state = states[1]
+    r = df.(w * x .+ hw * state .+ b)
+    g = g .* (hw * r)
+    dw_c .+= g * x'
+    dhw_c .+= g * state'
+    db_c .+= sum(g, dims=2)
 
     tuple(w' * g, dw_c, db_c, dhw_c)
+end
+
+function clip!(arr)
+    row, col = size(arr)
+    for c in col
+        for r in row
+            arr[r, c] = clamp(arr[r,c], -5f0, 5f0)
+        end
+    end
 end
