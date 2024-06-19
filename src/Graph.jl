@@ -257,37 +257,28 @@ backward(::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, states, xes, f, 
     dhw_c = dhw
     db_c = db
 
-    x = xes[4]
-    state = states[4]
-    r = df.(w * x .+ hw * state .+ b)
-    g = g .* (hw * r)
-    dw_c .+= g * x'
-    dhw_c .+= g * state'
-    db_c .+= sum(g, dims=2)
+    z1 = df.(w * xes[1])
+    z2 = df.(w * xes[2] .+ hw * states[1])
+    z3 = df.(w * xes[3] .+ hw * states[2])
+    z4 = df.(w * xes[4] .+ hw * states[3])
 
-    x = xes[3]
-    state = states[3]
-    r = df.(w * x .+ hw * state .+ b)
-    g = g .* (hw * r)
-    dw_c .+= g * x'
-    dhw_c .+= g * state'
-    db_c .+= sum(g, dims=2)
+    dw1 = g .* z1 * xes[1]'
+    dw2 = (g .* z2 * xes[2]') .+ (hw * dw1)
+    dw3 = (g .* z3 * xes[3]') .+ (hw * dw2)
+    dw4 = (g .* z4 * xes[4]') .+ (hw * dw3)
 
-    x = xes[2]
-    state = states[2]
-    r = df.(w * x .+ hw * state .+ b)
-    g = g .* (hw * r)
-    dw_c .+= g * x'
-    dhw_c .+= g * state'
-    db_c .+= sum(g, dims=2)
+    dhw2 = g .* z2 * states[1]'
+    dhw3 = (g .* z3 * states[2]') .+ (hw .* dhw2)
+    dhw4 = (g .* z4 * states[3]') .+ (hw .* dhw3)
 
-    x = xes[1]
-    state = states[1]
-    r = df.(w * x .+ hw * state .+ b)
-    g = g .* (hw * r)
-    dw_c .+= g * x'
-    dhw_c .+= g * state'
-    db_c .+= sum(g, dims=2)
+    dw_c .+= dw1
+    dw_c .+= dw2
+    dw_c .+= dw3
+    dw_c .+= dw4
+
+    dhw_c .+= dhw2
+    dhw_c .+= dhw3
+    dhw_c .+= dhw4
 
     tuple(w' * g, dw_c, db_c, dhw_c)
 end

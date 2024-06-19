@@ -56,7 +56,7 @@ function main()
     hwr0 = Constant(zeros(Float32, 64, 64))
     br0 = Constant(zeros(Float32, 64, ))
 
-    optimizer = GradientOptimizersModule.Descent(1)
+    optimizer = GradientOptimizersModule.Descent(15e-3)
 
     r = rnn_layer(x, wr, br, hwr, states, xes, fr, dfr, wr0, hwr0, br0)
     d = dense_layer(r, wd, bd, fd, dfd)
@@ -89,7 +89,7 @@ function main()
 #                 @show loss
 #                 readline()
 #             end
-            gradient = AccuracyModule.gradient(result, train_y_batched[batch]) ./ batch_size .* 1.5e-3
+            gradient = AccuracyModule.gradient(result, train_y_batched[batch]) ./ batch_size
             backward!(graph, seed=gradient)
             update_weights!(graph, optimizer)
         end
