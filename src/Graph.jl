@@ -257,10 +257,10 @@ backward(::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, states, xes, f, 
     dhw_c = dhw
     db_c = db
 
-    z1 = df.(w * xes[1])
-    z2 = df.(w * xes[2] .+ hw * states[1])
-    z3 = df.(w * xes[3] .+ hw * states[2])
-    z4 = df.(w * xes[4] .+ hw * states[3])
+    z1 = df.(w * xes[1] .+ b)
+    z2 = df.(w * xes[2] .+ hw * states[1] .+ b)
+    z3 = df.(w * xes[3] .+ hw * states[2] .+ b)
+    z4 = df.(w * xes[4] .+ hw * states[3] .+ b)
 
     dw1 = g .* z1 * xes[1]'
     dw2 = (g .* z2 * xes[2]') .+ (hw * dw1)
@@ -279,6 +279,11 @@ backward(::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, states, xes, f, 
     dhw_c .+= dhw2
     dhw_c .+= dhw3
     dhw_c .+= dhw4
+
+    db_c .+= sum(g .* z1, dims=2)
+    db_c .+= sum(g .* z2, dims=2)
+    db_c .+= sum(g .* z3, dims=2)
+    db_c .+= sum(g .* z4, dims=2)
 
     tuple(w' * g, dw_c, db_c, dhw_c)
 end
