@@ -54,9 +54,11 @@ function main()
     fr = Constant(tanh)
     dfr = Constant(UtilsModule.tanh_deriv)
 
-    state0 = Variable(zeros(64))
+    state0 = Variable(nothing)
 
     optimizer = GradientOptimizersModule.Descent(15e-3)
+
+    state0_value = zeros(64, 100)
 
     r1 = rnn_layer(wr, hwr, state0, br, x1, fr, dfr)
     r2 = rnn_layer(wr, hwr, r1, br, x2, fr, dfr)
@@ -70,7 +72,7 @@ function main()
     for epoch in 1:epochs
         batches = randperm(size(train_x_batched, 1))
         @time for batch in batches
-            state0.output = zeros(64, 100)
+            state0.output = state0_value
             x1.output = train_x_batched[batch][  1:196,:]
             x2.output = train_x_batched[batch][197:392,:]
             x3.output = train_x_batched[batch][393:588,:]
