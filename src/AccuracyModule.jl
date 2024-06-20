@@ -7,8 +7,7 @@ module AccuracyModule
     end
 
     function gradient(predictions, targets)
-        probabilities = softmax(predictions)
-        return Float32.(probabilities .- targets)
+        return softmax(predictions) .- targets
     end
 
     function loss(predictions, targets)

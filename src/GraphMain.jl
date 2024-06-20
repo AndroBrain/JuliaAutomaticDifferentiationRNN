@@ -25,8 +25,6 @@ function update_weights!(graph::Vector, optimizer::GradientOptimizersModule.Grad
             if node.gradient != nothing
                 node.output .-= optimizer(node.gradient)
                 node.gradient .= 0
-            elseif node.gradient == nothing
-                node.output = nothing
             end
         end
     end
@@ -38,10 +36,10 @@ function main()
 
     epochs = 5
 
-    x1 = Variable([0.])
-    x2 = Variable([0.])
-    x3 = Variable([0.])
-    x4 = Variable([0.])
+    x1 = Variable(zeros(Float32, 1, 1))
+    x2 = Variable(zeros(Float32, 1, 1))
+    x3 = Variable(zeros(Float32, 1, 1))
+    x4 = Variable(zeros(Float32, 1, 1))
 
     wd = Variable(UtilsModule.glorot_uniform(10, 64))
     bd = Variable(UtilsModule.glorot_uniform(10, ))
@@ -54,11 +52,10 @@ function main()
     fr = Constant(tanh)
     dfr = Constant(UtilsModule.tanh_deriv)
 
-    state0 = Variable(nothing)
+    state0_value = zeros(Float32, 64, 100)
+    state0 = Variable(state0_value)
 
     optimizer = GradientOptimizersModule.Descent(15e-3)
-
-    state0_value = zeros(Float32, 64, 100)
 
     r1 = rnn_layer(wr, hwr, state0, br, x1, fr, dfr)
     r2 = rnn_layer(wr, hwr, r1, br, x2, fr, dfr)

@@ -11,11 +11,11 @@ struct Constant{T} <: GraphNode
     output :: T
 end
 
-mutable struct Variable <: GraphNode
-    output :: Any
+mutable struct Variable{O} <: GraphNode
+    output :: O
     gradient :: Any
     name :: String
-    Variable(output; name="") = new(output, nothing, name)
+    Variable(output; name="") = new{typeof(output)}(output, nothing, name)
 end
 
 mutable struct ScalarOperator{F} <: Operator
@@ -26,12 +26,12 @@ mutable struct ScalarOperator{F} <: Operator
     ScalarOperator(fun, inputs...; name="") = new{typeof(fun)}(inputs, nothing, nothing, name)
 end
 
-mutable struct BroadcastedOperator{F} <: Operator
-    inputs
+mutable struct BroadcastedOperator{F, Inputs} <: Operator
+    inputs :: Inputs
     output
     gradient
     name :: String
-    BroadcastedOperator(fun, inputs...; name="?") = new{typeof(fun)}(inputs, nothing, nothing, name)
+    BroadcastedOperator(fun, inputs...; name="?") = new{typeof(fun), typeof(inputs)}(inputs, nothing, nothing, name)
 end
 
 # Visitor
@@ -219,7 +219,6 @@ backward(::BroadcastedOperator{typeof(dense_layer)}, x, w, b, f, df, g) = let
     g = df.(w * x .+ b) .* g
     tuple(w' * g, g * x', sum(g, dims=2))
 end
-
 
 rnn_layer(U :: GraphNode, W :: GraphNode, h :: GraphNode, b :: GraphNode, x :: GraphNode, f::Constant{F1}, df::Constant{F2}) where {F1 <: Function, F2 <: Function} = BroadcastedOperator(rnn_layer, U, W, h, b, x, f, df)
 forward(::BroadcastedOperator{typeof(rnn_layer)}, w, hw, state, b, x, f, df) = f.(w * x .+ hw * state .+ b)
