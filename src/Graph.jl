@@ -220,75 +220,11 @@ backward(::BroadcastedOperator{typeof(dense_layer)}, x, w, b, f, df, g) = let
     tuple(w' * g, g * x', sum(g, dims=2))
 end
 
-rnn_layer(x::GraphNode, w::GraphNode, b::GraphNode, hw::GraphNode, states::GraphNode, xes::GraphNode, f::Constant{T1}, df::Constant{T2}, dw::GraphNode, dhw::GraphNode, db::GraphNode) where {T1 <: Function, T2 <: Function} = BroadcastedOperator(rnn_layer, x, w, b, hw, states, xes, f, df, dw, dhw, db)
-forward(o::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, states, xes, f, df, dw, dhw, db) = let
-    if states == nothing
-        o.inputs[5].output = Matrix{Float32}[]
-        o.inputs[6].output = Matrix{Float32}[]
-        h = f.(w * x .+ b)
-    else
-        h = f.(w * x .+ hw * last(states) .+ b)
-    end
-    push!(o.inputs[5].output, h)
-    push!(o.inputs[6].output, x)
-    h
-end
-backward(::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, states, xes, f, df, dw, dhw, db, g) = let
-    prev_state = nothing
-    dw_c = dw
-    dhw_c = dhw
-    db_c = db
 
-    z = Matrix{Float32}[]
-
-    for i in eachindex(states)
-        weighted_x = w * xes[i] .+ b
-        if i == 1
-            push!(z, df.(weighted_x))
-        else
-            push!(z, df.(weighted_x .+ hw * states[i - 1]))
-        end
-    end
-
-    _g = Matrix{Float32}[g]
-    for i in reverse(1:length(states) - 1)
-        push!(_g, last(_g) .* (hw * z[i + 1]))
-    end
-
-    prev_dw = nothing
-    prev_dhw = nothing
-
-    for i in eachindex(xes)
-        zg = _g[length(xes) - i + 1] .* z[i]
-        x = xes[i]
-        if i == 1
-            dw = zg * x'
-        else
-            dw = zg * x' .+ (hw * prev_dw)
-        end
-        if i > 1
-           state = states[i - 1]
-           dhw = zg * state'
-        elseif i > 2
-           state = states[i - 1]
-           dhw = (zg * state') .+ (hw .* prev_dhw)
-        end
-
-        dw_c .+= dw
-        dhw_c .+= dhw
-        db_c .+= sum(zg, dims=2)
-        prev_dw = dw
-        prev_dhw = dhw
-    end
-
-    tuple(w' * g, dw_c, db_c, dhw_c)
-end
-
-function clip!(arr)
-    row, col = size(arr)
-    for c in col
-        for r in row
-            arr[r, c] = clamp(arr[r,c], -5f0, 5f0)
-        end
-    end
+rnn_layer(U :: GraphNode, W :: GraphNode, h :: GraphNode, b :: GraphNode, x :: GraphNode) = BroadcastedOperator(rnn_layer, U, W, h, b, x)
+forward(::BroadcastedOperator{typeof(rnn_layer)}, w, hw, state, b, x) = tanh.(w * x .+ hw * state .+ b)
+backward(::BroadcastedOperator{typeof(rnn_layer)}, w, hw, state, b, x, g) = let
+    vectors_sum = w * x .+ hw * state .+ b
+    dh = g .* (1 .- tanh.(vectors_sum) .^ 2)
+    return tuple(dh * x', dh * state', hw' * dh, sum(dh, dims=2))
 end
