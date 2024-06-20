@@ -38,10 +38,10 @@ function main()
 
     epochs = 5
 
-    x1 = Variable([0.], name = "x")
-    x2 = Variable([0.], name = "x")
-    x3 = Variable([0.], name = "x")
-    x4 = Variable([0.], name = "x")
+    x1 = Variable([0.])
+    x2 = Variable([0.])
+    x3 = Variable([0.])
+    x4 = Variable([0.])
 
     wd = Variable(UtilsModule.glorot_uniform(10, 64))
     bd = Variable(UtilsModule.glorot_uniform(10, ))
@@ -58,10 +58,10 @@ function main()
 
     optimizer = GradientOptimizersModule.Descent(15e-3)
 
-    r1 = rnn_layer(wr, hwr, state0, br, x1)
-    r2 = rnn_layer(wr, hwr, r1, br, x2)
-    r3 = rnn_layer(wr, hwr, r2, br, x3)
-    r4 = rnn_layer(wr, hwr, r3, br, x4)
+    r1 = rnn_layer(wr, hwr, state0, br, x1, fr, dfr)
+    r2 = rnn_layer(wr, hwr, r1, br, x2, fr, dfr)
+    r3 = rnn_layer(wr, hwr, r2, br, x3, fr, dfr)
+    r4 = rnn_layer(wr, hwr, r3, br, x4, fr, dfr)
     d = dense_layer(r4, wd, bd, fd, dfd)
     graph = topological_sort(d)
 

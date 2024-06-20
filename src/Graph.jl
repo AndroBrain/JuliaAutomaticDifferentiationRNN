@@ -221,10 +221,9 @@ backward(::BroadcastedOperator{typeof(dense_layer)}, x, w, b, f, df, g) = let
 end
 
 
-rnn_layer(U :: GraphNode, W :: GraphNode, h :: GraphNode, b :: GraphNode, x :: GraphNode) = BroadcastedOperator(rnn_layer, U, W, h, b, x)
-forward(::BroadcastedOperator{typeof(rnn_layer)}, w, hw, state, b, x) = tanh.(w * x .+ hw * state .+ b)
-backward(::BroadcastedOperator{typeof(rnn_layer)}, w, hw, state, b, x, g) = let
-    vectors_sum = w * x .+ hw * state .+ b
-    dh = g .* (1 .- tanh.(vectors_sum) .^ 2)
+rnn_layer(U :: GraphNode, W :: GraphNode, h :: GraphNode, b :: GraphNode, x :: GraphNode, f::Constant{F1}, df::Constant{F2}) where {F1 <: Function, F2 <: Function} = BroadcastedOperator(rnn_layer, U, W, h, b, x, f, df)
+forward(::BroadcastedOperator{typeof(rnn_layer)}, w, hw, state, b, x, f, df) = f.(w * x .+ hw * state .+ b)
+backward(::BroadcastedOperator{typeof(rnn_layer)}, w, hw, state, b, x, f, df, g) = let
+    dh = g .* df.(w * x .+ hw * state .+ b)
     return tuple(dh * x', dh * state', hw' * dh, sum(dh, dims=2))
 end
