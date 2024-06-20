@@ -239,37 +239,47 @@ backward(::BroadcastedOperator{typeof(rnn_layer)}, x, w, b, hw, states, xes, f, 
     dhw_c = dhw
     db_c = db
 
-    z1 = df.(w * xes[1] .+ b)
-    z2 = df.(w * xes[2] .+ hw * states[1] .+ b)
-    z3 = df.(w * xes[3] .+ hw * states[2] .+ b)
-    z4 = df.(w * xes[4] .+ hw * states[3] .+ b)
+    z = Matrix{Float32}[]
 
-    g3 = g .* (hw * z4)
-    g2 = g3 .* (hw * z3)
-    g1 = g2 .* (hw * z2)
+    for i in eachindex(states)
+        weighted_x = w * xes[i] .+ b
+        if i == 1
+            push!(z, df.(weighted_x))
+        else
+            push!(z, df.(weighted_x .+ hw * states[i - 1]))
+        end
+    end
 
-    dw1 = g1 .* z1 * xes[1]'
-    dw2 = (g2 .* z2 * xes[2]') .+ (hw * dw1)
-    dw3 = (g3 .* z3 * xes[3]') .+ (hw * dw2)
-    dw4 = (g .* z4 * xes[4]') .+ (hw * dw3)
+    _g = Matrix{Float32}[g]
+    for i in reverse(1:length(states) - 1)
+        push!(_g, last(_g) .* (hw * z[i + 1]))
+    end
 
-    dhw2 = g2 .* z2 * states[1]'
-    dhw3 = (g3 .* z3 * states[2]') .+ (hw .* dhw2)
-    dhw4 = (g .* z4 * states[3]') .+ (hw .* dhw3)
+    prev_dw = nothing
+    prev_dhw = nothing
 
-    dw_c .+= dw1
-    dw_c .+= dw2
-    dw_c .+= dw3
-    dw_c .+= dw4
+    for i in eachindex(xes)
+        zg = _g[length(xes) - i + 1] .* z[i]
+        x = xes[i]
+        if i == 1
+            dw = zg * x'
+        else
+            dw = zg * x' .+ (hw * prev_dw)
+        end
+        if i > 1
+           state = states[i - 1]
+           dhw = zg * state'
+        elseif i > 2
+           state = states[i - 1]
+           dhw = (zg * state') .+ (hw .* prev_dhw)
+        end
 
-    dhw_c .+= dhw2
-    dhw_c .+= dhw3
-    dhw_c .+= dhw4
-
-    db_c .+= sum(g1 .* z1, dims=2)
-    db_c .+= sum(g2 .* z2, dims=2)
-    db_c .+= sum(g3 .* z3, dims=2)
-    db_c .+= sum(g .* z4, dims=2)
+        dw_c .+= dw
+        dhw_c .+= dhw
+        db_c .+= sum(zg, dims=2)
+        prev_dw = dw
+        prev_dhw = dhw
+    end
 
     tuple(w' * g, dw_c, db_c, dhw_c)
 end
