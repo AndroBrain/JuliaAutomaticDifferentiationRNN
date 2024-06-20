@@ -225,5 +225,5 @@ rnn_layer(U :: GraphNode, W :: GraphNode, h :: GraphNode, b :: GraphNode, x :: G
 forward(::BroadcastedOperator{typeof(rnn_layer)}, w, hw, state, b, x, f, df) = f.(w * x .+ hw * state .+ b)
 backward(::BroadcastedOperator{typeof(rnn_layer)}, w, hw, state, b, x, f, df, g) = let
     dh = g .* df.(w * x .+ hw * state .+ b)
-    return tuple(dh * x', dh * state', hw' * dh, sum(dh, dims=2))
+    tuple(dh * x', dh * state', hw' * dh, sum(dh, dims=2))
 end

@@ -58,7 +58,7 @@ function main()
 
     optimizer = GradientOptimizersModule.Descent(15e-3)
 
-    state0_value = zeros(64, 100)
+    state0_value = zeros(Float32, 64, 100)
 
     r1 = rnn_layer(wr, hwr, state0, br, x1, fr, dfr)
     r2 = rnn_layer(wr, hwr, r1, br, x2, fr, dfr)
